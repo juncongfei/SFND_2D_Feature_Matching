@@ -101,3 +101,136 @@ void detKeypointsShiTomasi(vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool b
         cv::waitKey(0);
     }
 }
+
+// Detect keypoints in image using the traditional Harris detector
+void detKeypointsHarris(vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool bVis)
+{
+    // Detector parameters
+    int blockSize = 2;     // for every pixel, a blockSize  x  blockSize neighborhood is considered
+    int apertureSize = 3;  // aperture parameter for Sobel operator (must be odd)
+    int minResponse = 100; // minimum value for a corner in the 8bit scaled response matrix
+    double k = 0.04;       // Harris parameter (see equation for details)
+
+    // Detect Harris corners and normalize output
+    double t = (double)cv::getTickCount();
+    cv::Mat dst, dst_norm, dst_norm_scaled;
+    dst = cv::Mat::zeros(img.size(), CV_32FC1);
+    cv::cornerHarris(img, dst, blockSize, apertureSize, k, cv::BORDER_DEFAULT);
+    cv::normalize(dst, dst_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1, cv::Mat());
+    cv::convertScaleAbs(dst_norm, dst_norm_scaled);
+
+    // Apply NMS
+    double maxOverlap = 0.0; // max. permissible overlap between two features in %, used during non-maxima suppression
+    for (size_t r = 0; r < dst_norm.rows; r++)
+    {
+        for (size_t c = 0; c < dst_norm.cols; c++)
+        {
+            int response = (int)dst_norm.at<float>(r, c);
+            if (response > minResponse)
+            {
+                cv::KeyPoint currKpt;
+                currKpt.pt = cv::Point2f(c, r);
+                currKpt.size = 2 * apertureSize;
+                currKpt.response = response;
+
+                // perform non-maximum suppression (NMS) in local neighbourhood around new key point
+                bool b_overlap = false;
+                for (auto it = keypoints.begin(); it != keypoints.end(); ++it)
+                {
+                    double overlap = cv::KeyPoint::overlap(currKpt, *it);
+                    if (overlap > maxOverlap)
+                    {
+                        b_overlap = true;
+                        if (currKpt.response > it->response)
+                        {
+                            *it = currKpt;
+                            break;
+                        }
+                    }
+                }
+                if (!b_overlap)
+                {                                     // only add new key point if no overlap has been found in previous NMS
+                    keypoints.push_back(currKpt); // store new keypoint in dynamic list
+                }
+            }
+        }
+    }
+  
+    t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+    cout << "Harris detection with n=" << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+
+
+    // visualize results
+    if (bVis)
+    {
+        cv::Mat visImage = img.clone();
+        cv::drawKeypoints(img, keypoints, visImage, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+        string windowName = "Harris Corner Detector Results";
+        cv::namedWindow(windowName, 6);
+        imshow(windowName, visImage);
+        cv::waitKey(0);
+    }
+}
+
+//FAST, BRISK, ORB, AKAZE, SIFT
+void detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, std::string detectorType, bool bVis)
+{
+    string windowName;
+    if (detectorType.compare("FAST") == 0)
+    {
+        int threshold = 30;
+        bool bNMS = true;
+        cv::FastFeatureDetector::DetectorType type = cv::FastFeatureDetector::TYPE_9_16; // TYPE_9_16, TYPE_7_12, TYPE_5_8
+        cv::Ptr<cv::FeatureDetector> detector = cv::FastFeatureDetector::create(threshold, bNMS, type);
+        double t = (double)cv::getTickCount();
+        detector->detect(img, keypoints);
+        t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+        cout << "FAST detection with n= " << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+        windowName = "FAST  Detector Results";
+    }  
+    else if (detectorType.compare("BRISK") == 0)
+    {
+        cv::Ptr<cv::FeatureDetector> detector = cv::BRISK::create();
+        double t = (double)cv::getTickCount();
+        detector->detect(img, keypoints);
+        t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+        cout << "BRISK detection with n= " << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+        windowName = "BRISK  Detector Results";
+    }
+    else if (detectorType.compare("ORB") == 0)
+    {
+        cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+        double t = (double)cv::getTickCount();
+        detector->detect(img, keypoints);
+        t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+        cout << "ORB detection with n= " << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+        windowName = "ORB  Detector Results";
+    }  
+    else if (detectorType.compare("AKAZE") == 0)
+    {
+        cv::Ptr<cv::FeatureDetector> detector = cv::AKAZE::create();
+        double t = (double)cv::getTickCount();
+        detector->detect(img, keypoints);
+        t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+        cout << "AKAZE detection with n= " << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+        windowName = "AKAZE  Detector Results";
+    }  
+    else if (detectorType.compare("SIFT") == 0)
+    {
+        cv::Ptr<cv::FeatureDetector> detector = cv::xfeatures2d::SIFT::create();
+        double t = (double)cv::getTickCount();
+        detector->detect(img, keypoints);
+        t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+        cout << "SIFT detection with n= " << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+         windowName = "SIFT  Detector Results";
+    }  
+    // visualize results
+    if (bVis)
+    {
+        cv::Mat visImage = img.clone();
+        cv::drawKeypoints(img, keypoints, visImage, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+        cv::namedWindow(windowName, 6);
+        imshow(windowName, visImage);
+        cv::waitKey(0);
+    }
+}
