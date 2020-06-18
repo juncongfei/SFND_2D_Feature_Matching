@@ -27,10 +27,10 @@ int main(int argc, const char *argv[])
     // Create an otput filestream object
     std::ofstream result;
     // Set it write and append mode
-    result.open("../results/result.csv", std::fstream::out | std::fstream::app);
+    result.open("../results/result_roi.csv", std::fstream::out | std::fstream::app);
     
     // result << "detectorType" << "," << "descriptorType" << "," << "imageIndex" << "," << "detectorTime" << "," 
-    // << "descriptorTime" << "," << "detectedKpts" << "," << "matchedKpts" << "," << "totalTime" << endl;
+    // << "descriptorTime" << "," << "detectedKptsROI" << "," << "matchedKpts" << "," << "totalTime" << endl;
 
     // data location
     string dataPath = "../";
@@ -128,6 +128,7 @@ int main(int argc, const char *argv[])
             }
             keypoints = newKpts;
         }
+        int detectedKptsROI = keypoints.size();
 
         //// EOF STUDENT ASSIGNMENT
 
@@ -191,8 +192,8 @@ int main(int argc, const char *argv[])
             cout << "#4 : MATCH KEYPOINT DESCRIPTORS done" << endl;
 
             // visualize matches between current and previous image
-            bVis = true;
-            // bVis = false;
+            // bVis = true;
+            bVis = false;
             if (bVis)
             {
                 cv::Mat matchImg = ((dataBuffer.end() - 1)->cameraImg).clone();
@@ -212,7 +213,7 @@ int main(int argc, const char *argv[])
         }
         int matchedKpts = (dataBuffer.end() - 1)->kptMatches.size();
         result << detectorType << "," << descriptorType << "," << imgIndex << "," << detectorTime << "," 
-        << descriptorTime << "," << detectedKpts << "," << matchedKpts << "," << detectorTime + descriptorTime << endl;
+        << descriptorTime << "," << detectedKptsROI << "," << matchedKpts << "," << detectorTime + descriptorTime << endl;
 
     } // eof loop over all images
 
