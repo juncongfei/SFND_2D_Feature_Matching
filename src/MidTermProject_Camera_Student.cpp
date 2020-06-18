@@ -24,6 +24,14 @@ int main(int argc, const char *argv[])
 
     /* INIT VARIABLES AND DATA STRUCTURES */
 
+    // Create an otput filestream object
+    std::ofstream result;
+    // Set it write and append mode
+    result.open("../results/result.csv", std::fstream::out | std::fstream::app);
+    
+    // result << "detectorType" << "," << "descriptorType" << "," << "imageIndex" << "," << "detectorTime" << "," 
+    // << "descriptorTime" << "," << "detectedKpts" << "," << "matchedKpts" << "," << "totalTime" << endl;
+
     // data location
     string dataPath = "../";
 
@@ -83,23 +91,24 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-        string detectorType = "HARRIS"; // HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
+        string detectorType = "SIFT"; // SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
 
         //// STUDENT ASSIGNMENT
         //// TASK MP.2 -> add the following keypoint detectors in file matching2D.cpp and enable string-based selection based on detectorType
         //// -> HARRIS, FAST, BRISK, ORB, AKAZE, SIFT
-
+        double detectorTime;
+        int detectedKpts;
         if (detectorType.compare("SHITOMASI") == 0)
         {
-            detKeypointsShiTomasi(keypoints, imgGray, false);
+            detKeypointsShiTomasi(keypoints, imgGray, false, detectorTime, detectedKpts);
         }
         else if (detectorType.compare("HARRIS") == 0)
         {
-            detKeypointsHarris(keypoints, imgGray, false);
+            detKeypointsHarris(keypoints, imgGray, false, detectorTime, detectedKpts);
         }
         else
         {
-            detKeypointsModern(keypoints, imgGray, detectorType, false);
+            detKeypointsModern(keypoints, imgGray, detectorType, false, detectorTime, detectedKpts);
         }
         //// EOF STUDENT ASSIGNMENT
 
@@ -148,7 +157,8 @@ int main(int argc, const char *argv[])
 
         cv::Mat descriptors;
         string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
-        descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
+        double descriptorTime;
+        descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType, descriptorTime);
         //// EOF STUDENT ASSIGNMENT
 
         // push descriptors for current frame to end of data buffer
@@ -173,7 +183,6 @@ int main(int argc, const char *argv[])
             matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
                              (dataBuffer.end() - 2)->descriptors, (dataBuffer.end() - 1)->descriptors,
                              matches, descriptorType, matcherType, selectorType);
-
             //// EOF STUDENT ASSIGNMENT
 
             // store matches in current data frame
@@ -183,6 +192,7 @@ int main(int argc, const char *argv[])
 
             // visualize matches between current and previous image
             bVis = true;
+            // bVis = false;
             if (bVis)
             {
                 cv::Mat matchImg = ((dataBuffer.end() - 1)->cameraImg).clone();
@@ -200,6 +210,9 @@ int main(int argc, const char *argv[])
             }
             bVis = false;
         }
+        int matchedKpts = (dataBuffer.end() - 1)->kptMatches.size();
+        result << detectorType << "," << descriptorType << "," << imgIndex << "," << detectorTime << "," 
+        << descriptorTime << "," << detectedKpts << "," << matchedKpts << "," << detectorTime + descriptorTime << endl;
 
     } // eof loop over all images
 
